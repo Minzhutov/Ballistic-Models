@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-// Структура для возвращаемых параметров атмосферы
+
 typedef struct {
     double p;    // давление, Па
     double g;    // ускорение свободного падения, м/с²
@@ -15,7 +15,7 @@ typedef struct {
     double T;    // температура, К
 } AtmosphereParams;
 
-// Основная функция расчета
+
 AtmosphereParams calculate_atmosphere(double altitude);
 
 #ifdef __cplusplus

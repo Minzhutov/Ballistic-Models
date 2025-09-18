@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 project(AtmosphereLibrary)
 
+set(CMAKE_CXX_STANDARD 11)
+
 # Создание библиотеки
 add_library(atmosphere SHARED atmosphere.cpp)
 
