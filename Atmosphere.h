@@ -5,16 +5,6 @@
 extern "C" {
 #endif
 
-#ifdef _WIN32
-    #ifdef ATMOSPHERE_EXPORTS
-        #define ATMOSPHERE_API __declspec(dllexport)
-    #else
-        #define ATMOSPHERE_API __declspec(dllimport)
-    #endif
-#else
-    #define ATMOSPHERE_API
-#endif
-
 // Структура для возвращаемых параметров атмосферы
 typedef struct {
     double p;    // давление, Па
@@ -26,7 +16,7 @@ typedef struct {
 } AtmosphereParams;
 
 // Основная функция расчета
-ATMOSPHERE_API AtmosphereParams calculate_atmosphere(double altitude);
+AtmosphereParams calculate_atmosphere(double altitude);
 
 #ifdef __cplusplus
 }

@@ -1,14 +1,11 @@
 cmake_minimum_required(VERSION 3.10)
 project(AtmosphereLibrary)
 
-# Настройка библиотеки
-add_library(atmosphere SHARED atmosphere.cpp atmosphere.h)
+# Создание библиотеки
+add_library(atmosphere SHARED atmosphere.cpp)
 
-# Установка флага экспорта для Windows
-if(WIN32)
-    target_compile_definitions(atmosphere PRIVATE ATMOSPHERE_EXPORTS)
-endif()
-
-# Пример программы
+# Создание исполняемого файла
 add_executable(atmosphere_example main.cpp)
+
+# Линковка библиотеки с исполняемым файлом
 target_link_libraries(atmosphere_example atmosphere)
