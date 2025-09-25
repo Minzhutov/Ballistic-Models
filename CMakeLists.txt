@@ -1,13 +1,18 @@
 cmake_minimum_required(VERSION 3.10)
-project(AtmosphereLibrary)
+project(Atmosphere)  
 
 set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Создание библиотеки
-add_library(atmosphere SHARED atmosphere.cpp)
 
-# Создание исполняемого файла
-add_executable(atmosphere_example main.cpp)
+add_executable(atmosphere_app main.cpp atmosphere.cpp)
 
-# Линковка библиотеки с исполняемым файлом
-target_link_libraries(atmosphere_example atmosphere)
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(atmosphere_app PRIVATE -Wall -Wextra -pedantic)
+endif()
+
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    target_compile_options(atmosphere_app PRIVATE -std=c++11)
+endif()

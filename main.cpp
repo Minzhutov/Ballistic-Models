@@ -1,224 +1,473 @@
+#include "atmosphere.h"
 #include <iostream>
 #include <iomanip>
 #include <vector>
+#include <cmath>
+#include <sstream>
+#include <iomanip>
+#include <algorithm>
+#include <map>
 #include <fstream>
 #include <cstdlib>
-#include <cmath>
-#include "atmosphere.h"
 
-// Функция для создания файла с данными
-void create_data_file(const std::string& filename, const std::vector<double>& altitudes, 
-                     const std::vector<double>& values, const std::string& title) {
-    std::ofstream file(filename);
-    if (!file.is_open()) {
-        std::cerr << "Ошибка создания файла: " << filename << std::endl;
-        return;
-    }
+// Функция для форматирования числа с 6 значащими цифрами в фиксированной нотации
+std::string format_with_6_significant(double value) {
+    if (value == 0.0) return "0.00000";
     
-    file << "# " << title << "\n";
-    file << "# Высота (м)\tЗначение\n";
-    for (size_t i = 0; i < altitudes.size(); ++i) {
-        file << altitudes[i] << "\t" << values[i] << "\n";
-    }
-    file.close();
-}
-
-// Функция для создания скрипта GNUplot
-void create_gnuplot_script(const std::string& script_name, const std::string& data_file, 
-                          const std::string& output_file, const std::string& title, 
-                          const std::string& xlabel, const std::string& ylabel, 
-                          bool logscale = false) {
-    std::ofstream script(script_name);
-    if (!script.is_open()) {
-        std::cerr << "Ошибка создания скрипта: " << script_name << std::endl;
-        return;
-    }
+    // Определяем порядок числа
+    int order = (value == 0) ? 0 : floor(log10(fabs(value)));
     
-    script << "set terminal pngcairo size 1200,800 enhanced font 'Arial,12'\n";
-    script << "set output '" << output_file << "'\n";
-    script << "set title '" << title << "'\n";
-    script << "set xlabel '" << xlabel << "'\n";
-    script << "set ylabel '" << ylabel << "'\n";
-    script << "set grid\n";
-    script << "set key top right\n";
+    // Количество знаков после запятой
+    int precision = 5 - order;
     
-    if (logscale) {
-        script << "set logscale y\n";
-    }
+    std::stringstream ss;
     
-    script << "plot '" << data_file << "' using 1:2 with lines linewidth 2 linecolor rgb '#0066cc' title ''\n";
-    script << "exit\n";
-    
-    script.close();
-}
-
-// Функция для запуска GNUplot
-void run_gnuplot(const std::string& script_name) {
-    std::string command = "gnuplot " + script_name;
-    int result = system(command.c_str());
-    if (result != 0) {
-        std::cout << "GNUplot не установлен или произошла ошибка. Установите GNUplot для просмотра графиков.\n";
-    }
-}
-
-void print_table_header() {
-    std::cout << std::left;
-    std::cout << std::setw(10) << "Высота, м" << " | ";
-    std::cout << std::setw(10) << "H_гео, м" << " | ";
-    std::cout << std::setw(8) << "T, К" << " | ";
-    std::cout << std::setw(12) << "p, Па" << " | ";
-    std::cout << std::setw(12) << "ρ, кг/м³" << " | ";
-    std::cout << std::setw(8) << "a, м/с" << " | ";
-    std::cout << std::setw(8) << "g, м/с²" << "\n";
-    
-    std::cout << std::string(95, '-') << "\n";
-}
-
-void print_results(double altitude, const AtmosphereParams& params) {
-    std::cout << std::fixed << std::setprecision(2);
-    std::cout << std::left;
-    
-    std::cout << std::setw(10) << altitude << " | ";
-    std::cout << std::setw(10) << params.H << " | ";
-    std::cout << std::setw(8) << params.T << " | ";
-    
-    if (params.p >= 1000) {
-        std::cout << std::setw(12) << params.p << " | ";
+    if (precision < 0) {
+        // Для больших чисел (order >= 5) - без дробной части
+        ss << std::fixed << std::setprecision(0) << value;
+    } else if (precision > 10) {
+        // Для очень малых чисел - научная нотация
+        ss << std::scientific << std::setprecision(5) << value;
     } else {
-        std::cout << std::setw(12) << std::setprecision(6) << params.p << " | ";
-        std::cout << std::fixed << std::setprecision(2);
+        // Фиксированная нотация с нужным количеством знаков
+        ss << std::fixed << std::setprecision(precision) << value;
     }
     
-    if (params.ro >= 0.1) {
-        std::cout << std::setw(12) << params.ro << " | ";
-    } else {
-        std::cout << std::setw(12) << std::setprecision(6) << params.ro << " | ";
-        std::cout << std::fixed << std::setprecision(2);
+    std::string result = ss.str();
+    
+    // Удаляем лишние нули в конце
+    size_t dot_pos = result.find('.');
+    if (dot_pos != std::string::npos) {
+        // Удаляем trailing zeros
+        result = result.erase(result.find_last_not_of('0') + 1);
+        // Если после точки ничего не осталось, удаляем точку
+        if (result.back() == '.') {
+            result.pop_back();
+        }
     }
     
-    std::cout << std::setw(8) << params.a << " | ";
-    std::cout << std::setw(8) << params.g << "\n";
+    return result;
 }
 
-void generate_plots() {
-    std::cout << "\nГенерация графиков...\n";
+// Функция для создания графика с высотой на вертикальной оси
+void create_gnuplot_graph_vertical(const std::vector<double>& altitudes, 
+                                  const std::vector<double>& values,
+                                  const std::string& output_filename,
+                                  const std::string& title,
+                                  const std::string& xlabel,
+                                  const std::string& ylabel,
+                                  bool logarithmic = false) {
     
-    // Создаем данные для графиков
+    // Создаем временный файл с данными
+    std::string data_filename = "temp_data.dat";
+    std::ofstream data_file(data_filename);
+    
+    for (size_t i = 0; i < altitudes.size(); i++) {
+        data_file << values[i] << " " << altitudes[i] << std::endl;
+    }
+    data_file.close();
+    
+    // Создаем скрипт для GNUplot
+    std::string script_filename = "temp_script.plt";
+    std::ofstream script_file(script_filename);
+    
+    script_file << "set terminal pngcairo size 1000,1200 enhanced font 'Arial,12'" << std::endl;
+    script_file << "set output '" << output_filename << "'" << std::endl;
+    script_file << "set title '" << title << "'" << std::endl;
+    script_file << "set xlabel '" << xlabel << "'" << std::endl;
+    script_file << "set ylabel '" << ylabel << "'" << std::endl;
+    script_file << "set grid" << std::endl;
+    script_file << "set key top right" << std::endl;
+    
+    if (logarithmic) {
+        script_file << "set logscale x" << std::endl;
+    }
+    
+    // Инвертируем ось Y чтобы высота увеличивалась снизу вверх
+    script_file << "set yrange [*:*] reverse" << std::endl;
+    
+    script_file << "plot '" << data_filename << "' with lines linewidth 2 linecolor rgb 'blue' title ''" << std::endl;
+    script_file << "quit" << std::endl;
+    
+    script_file.close();
+    
+    // Запускаем GNUplot
+    std::string command = "gnuplot " + script_filename;
+    system(command.c_str());
+    
+    // Удаляем временные файлы
+    remove(data_filename.c_str());
+    remove(script_filename.c_str());
+    
+    std::cout << "Создан график: " << output_filename << std::endl;
+}
+
+// Функция для создания всех графиков с высотой на вертикальной оси
+void create_all_graphs_vertical() {
+    std::cout << std::endl;
+    std::cout << "СОЗДАНИЕ ГРАФИКОВ (ВЫСОТА НА ВЕРТИКАЛЬНОЙ ОСИ)" << std::endl;
+    std::cout << "=============================================" << std::endl;
+    
+    // Создаем набор высот для построения графиков
     std::vector<double> altitudes;
-    std::vector<double> temperatures;
-    std::vector<double> pressures;
-    std::vector<double> densities;
-    std::vector<double> sound_speeds;
-    std::vector<double> gravities;
+    for (double h = 0; h <= 94000; h += 100) {
+        altitudes.push_back(h);
+    }
     
-    // Генерируем данные с шагом 1000 м
-    for (double h = -2000; h <= 94000; h += 1000) {
+    // Собираем данные для каждого графика
+    std::vector<double> temperatures, pressures, densities, sound_speeds, gravities;
+    
+    for (double h : altitudes) {
         try {
             AtmosphereParams params = calculate_atmosphere(h);
-            altitudes.push_back(h);
             temperatures.push_back(params.T);
             pressures.push_back(params.p);
             densities.push_back(params.ro);
             sound_speeds.push_back(params.a);
             gravities.push_back(params.g);
-        } catch (...) {
-            // Пропускаем невалидные высоты
+        } catch (const std::exception& e) {
+            // Пропускаем ошибки
         }
     }
     
-    // Создаем файлы с данными
-    create_data_file("temperature_data.txt", altitudes, temperatures, "Зависимость температуры от высоты");
-    create_data_file("pressure_data.txt", altitudes, pressures, "Зависимость давления от высоты");
-    create_data_file("density_data.txt", altitudes, densities, "Зависимость плотности от высоты");
-    create_data_file("sound_speed_data.txt", altitudes, sound_speeds, "Зависимость скорости звука от высоты");
-    create_data_file("gravity_data.txt", altitudes, gravities, "Зависимость ускорения свободного падения от высоты");
+    // Создаем графики с высотой на вертикальной оси
+    create_gnuplot_graph_vertical(altitudes, temperatures, "height_vs_temperature.png",
+                                 "Зависимость высоты от температуры (ГОСТ 4401-81)",
+                                 "Температура, K", "Высота, м");
     
-    // Создаем скрипты GNUplot
-    create_gnuplot_script("plot_temperature.gp", "temperature_data.txt", "temperature_plot.png", 
-                         "Зависимость температуры от высоты", "Высота, м", "Температура, К");
+    create_gnuplot_graph_vertical(altitudes, pressures, "height_vs_pressure.png",
+                                 "Зависимость высоты от давления (ГОСТ 4401-81)",
+                                 "Давление, Па", "Высота, м", true);
     
-    create_gnuplot_script("plot_pressure.gp", "pressure_data.txt", "pressure_plot.png", 
-                         "Зависимость давления от высоты", "Высота, м", "Давление, Па", true);
+    create_gnuplot_graph_vertical(altitudes, densities, "height_vs_density.png",
+                                 "Зависимость высоты от плотности (ГОСТ 4401-81)",
+                                 "Плотность, кг/м³", "Высота, м", true);
     
-    create_gnuplot_script("plot_density.gp", "density_data.txt", "density_plot.png", 
-                         "Зависимость плотности от высоты", "Высота, м", "Плотность, кг/м³", true);
+    create_gnuplot_graph_vertical(altitudes, sound_speeds, "height_vs_sound_speed.png",
+                                 "Зависимость высоты от скорости звука (ГОСТ 4401-81)",
+                                 "Скорость звука, м/с", "Высота, м");
     
-    create_gnuplot_script("plot_sound_speed.gp", "sound_speed_data.txt", "sound_speed_plot.png", 
-                         "Зависимость скорости звука от высоты", "Высота, м", "Скорость звука, м/с");
+    create_gnuplot_graph_vertical(altitudes, gravities, "height_vs_gravity.png",
+                                 "Зависимость высоты от ускорения свободного падения (ГОСТ 4401-81)",
+                                 "Ускорение свободного падения, м/с²", "Высота, м");
+}
+
+// Функция для создания совмещенного графика с высотой на вертикальной оси
+void create_combined_graph_vertical() {
+    std::cout << std::endl;
+    std::cout << "СОЗДАНИЕ СОВМЕЩЕННОГО ГРАФИКА (ВЫСОТА НА ВЕРТИКАЛЬНОЙ ОСИ)" << std::endl;
+    std::cout << "=========================================================" << std::endl;
     
-    create_gnuplot_script("plot_gravity.gp", "gravity_data.txt", "gravity_plot.png", 
-                         "Зависимость ускорения свободного падения от высоты", "Высота, м", "Ускорение, м/с²");
+    std::vector<double> altitudes;
+    for (double h = 0; h <= 94000; h += 100) {
+        altitudes.push_back(h);
+    }
+    
+    std::vector<double> temperatures, pressures, densities;
+    
+    for (double h : altitudes) {
+        try {
+            AtmosphereParams params = calculate_atmosphere(h);
+            temperatures.push_back(params.T);
+            pressures.push_back(params.p);
+            densities.push_back(params.ro);
+        } catch (const std::exception& e) {
+            // Пропускаем ошибки
+        }
+    }
+    
+    // Создаем временный файл с данными
+    std::string data_filename = "temp_combined.dat";
+    std::ofstream data_file(data_filename);
+    
+    for (size_t i = 0; i < altitudes.size(); i++) {
+        data_file << temperatures[i] << " " << pressures[i] << " " << densities[i] << " " << altitudes[i] << std::endl;
+    }
+    data_file.close();
+    
+    // Создаем скрипт для GNUplot
+    std::string script_filename = "temp_combined.plt";
+    std::ofstream script_file(script_filename);
+    
+    script_file << "set terminal pngcairo size 1400,1200 enhanced font 'Arial,12'" << std::endl;
+    script_file << "set output 'combined_graph_vertical.png'" << std::endl;
+    script_file << "set title 'Параметры стандартной атмосферы ГОСТ 4401-81 (высота на вертикальной оси)'" << std::endl;
+    script_file << "set xlabel 'Температура, K / Давление, Па / Плотность, кг/м³'" << std::endl;
+    script_file << "set ylabel 'Высота, м'" << std::endl;
+    script_file << "set grid" << std::endl;
+    script_file << "set key top right" << std::endl;
+    script_file << "set logscale x2" << std::endl;
+    script_file << "set x2tics" << std::endl;
+    
+    // Инвертируем ось Y чтобы высота увеличивалась снизу вверх
+    script_file << "set yrange [*:*] reverse" << std::endl;
+    
+    script_file << "plot '" << data_filename << "' using 1:4 with lines linewidth 2 linecolor rgb 'red' title 'Температура', \\" << std::endl;
+    script_file << "     '" << data_filename << "' using 2:4 with lines linewidth 2 linecolor rgb 'blue' axes x2y1 title 'Давление', \\" << std::endl;
+    script_file << "     '" << data_filename << "' using 3:4 with lines linewidth 2 linecolor rgb 'green' axes x2y1 title 'Плотность'" << std::endl;
+    script_file << "quit" << std::endl;
+    
+    script_file.close();
     
     // Запускаем GNUplot
-    std::cout << "Создание графиков...\n";
-    run_gnuplot("plot_temperature.gp");
-    run_gnuplot("plot_pressure.gp");
-    run_gnuplot("plot_density.gp");
-    run_gnuplot("plot_sound_speed.gp");
-    run_gnuplot("plot_gravity.gp");
+    system("gnuplot temp_combined.plt");
     
-    std::cout << "Графики сохранены в файлы:\n";
-    std::cout << " - temperature_plot.png\n";
-    std::cout << " - pressure_plot.png\n";
-    std::cout << " - density_plot.png\n";
-    std::cout << " - sound_speed_plot.png\n";
-    std::cout << " - gravity_plot.png\n";
+    // Удаляем временные файлы
+    remove(data_filename.c_str());
+    remove(script_filename.c_str());
+    
+    std::cout << "Создан совмещенный график: combined_graph_vertical.png" << std::endl;
+}
+
+// Функция для создания графиков в разных масштабах с высотой на вертикальной оси
+void create_zoomed_graphs_vertical() {
+    std::cout << std::endl;
+    std::cout << "СОЗДАНИЕ ГРАФИКОВ В РАЗНЫХ МАСШТАБАХ (ВЫСОТА НА ВЕРТИКАЛЬНОЙ ОСИ)" << std::endl;
+    std::cout << "=================================================================" << std::endl;
+    
+    // График для тропосферы (0-15 км)
+    std::vector<double> altitudes_troposphere;
+    for (double h = 0; h <= 15000; h += 50) {
+        altitudes_troposphere.push_back(h);
+    }
+    
+    std::vector<double> temp_trop, press_trop, dens_trop;
+    
+    for (double h : altitudes_troposphere) {
+        try {
+            AtmosphereParams params = calculate_atmosphere(h);
+            temp_trop.push_back(params.T);
+            press_trop.push_back(params.p);
+            dens_trop.push_back(params.ro);
+        } catch (const std::exception& e) {
+            // Пропускаем ошибки
+        }
+    }
+    
+    // Создаем данные для графика тропосферы
+    std::string data_filename = "temp_troposphere.dat";
+    std::ofstream data_file(data_filename);
+    
+    for (size_t i = 0; i < altitudes_troposphere.size(); i++) {
+        data_file << temp_trop[i] << " " << press_trop[i] << " " << dens_trop[i] << " " << altitudes_troposphere[i] << std::endl;
+    }
+    data_file.close();
+    
+    // Скрипт для графика тропосферы
+    std::string script_filename = "temp_troposphere.plt";
+    std::ofstream script_file(script_filename);
+    
+    script_file << "set terminal pngcairo size 1200,1000 enhanced font 'Arial,12'" << std::endl;
+    script_file << "set output 'troposphere_graph_vertical.png'" << std::endl;
+    script_file << "set title 'Параметры атмосферы в тропосфере (0-15 км) - высота на вертикальной оси'" << std::endl;
+    script_file << "set xlabel 'Температура, K'" << std::endl;
+    script_file << "set ylabel 'Высота, м'" << std::endl;
+    script_file << "set x2label 'Давление, Па / Плотность, кг/м³'" << std::endl;
+    script_file << "set grid" << std::endl;
+    script_file << "set key top right" << std::endl;
+    script_file << "set logscale x2" << std::endl;
+    script_file << "set x2tics" << std::endl;
+    
+    // Инвертируем ось Y чтобы высота увеличивалась снизу вверх
+    script_file << "set yrange [*:*] reverse" << std::endl;
+    
+    script_file << "plot '" << data_filename << "' using 1:4 with lines linewidth 2 linecolor rgb 'red' title 'Температура', \\" << std::endl;
+    script_file << "     '" << data_filename << "' using 2:4 with lines linewidth 2 linecolor rgb 'blue' axes x2y1 title 'Давление', \\" << std::endl;
+    script_file << "     '" << data_filename << "' using 3:4 with lines linewidth 2 linecolor rgb 'green' axes x2y1 title 'Плотность'" << std::endl;
+    script_file << "quit" << std::endl;
+    
+    script_file.close();
+    
+    system("gnuplot temp_troposphere.plt");
+    remove(data_filename.c_str());
+    remove(script_filename.c_str());
+    std::cout << "Создан график тропосферы: troposphere_graph_vertical.png" << std::endl;
+}
+
+// Функция для создания графиков отдельных слоев атмосферы
+void create_atmospheric_layers_graphs() {
+    std::cout << std::endl;
+    std::cout << "СОЗДАНИЕ ГРАФИКОВ ДЛЯ ОТДЕЛЬНЫХ СЛОЕВ АТМОСФЕРЫ" << std::endl;
+    std::cout << "==============================================" << std::endl;
+    
+    // Определяем границы слоев
+    std::vector<std::pair<double, double>> layers = {
+        {0, 11000},      // Тропосфера
+        {11000, 20000},  // Нижняя стратосфера
+        {20000, 32000},  // Средняя стратосфера
+        {32000, 47000},  // Верхняя стратосфера
+        {47000, 51000},  // Нижняя мезосфера
+        {51000, 71000},  // Средняя мезосфера
+        {71000, 85000},  // Верхняя мезосфера
+        {85000, 94000}   // Термосфера
+    };
+    
+    std::vector<std::string> layer_names = {
+        "Тропосфера", "Нижняя стратосфера", "Средняя стратосфера", "Верхняя стратосфера",
+        "Нижняя мезосфера", "Средняя мезосфера", "Верхняя мезосфера", "Термосфера"
+    };
+    
+    for (size_t i = 0; i < layers.size(); i++) {
+        double h_start = layers[i].first;
+        double h_end = layers[i].second;
+        
+        std::vector<double> altitudes;
+        std::vector<double> temperatures;
+        
+        // Создаем точки с разным шагом в зависимости от слоя
+        double step = (h_end - h_start) / 100.0;
+        if (step < 10) step = 10;
+        
+        for (double h = h_start; h <= h_end; h += step) {
+            try {
+                AtmosphereParams params = calculate_atmosphere(h);
+                altitudes.push_back(h);
+                temperatures.push_back(params.T);
+            } catch (const std::exception& e) {
+                // Пропускаем ошибки
+            }
+        }
+        
+        if (altitudes.empty()) continue;
+        
+        // Создаем данные для графика
+        std::string data_filename = "temp_layer_" + std::to_string(i) + ".dat";
+        std::ofstream data_file(data_filename);
+        
+        for (size_t j = 0; j < altitudes.size(); j++) {
+            data_file << temperatures[j] << " " << altitudes[j] << std::endl;
+        }
+        data_file.close();
+        
+        // Скрипт для графика слоя
+        std::string script_filename = "temp_layer_" + std::to_string(i) + ".plt";
+        std::ofstream script_file(script_filename);
+        
+        script_file << "set terminal pngcairo size 800,600 enhanced font 'Arial,10'" << std::endl;
+        script_file << "set output 'layer_" << i << "_graph.png'" << std::endl;
+        script_file << "set title '" << layer_names[i] << " (" << h_start << "-" << h_end << " м)'" << std::endl;
+        script_file << "set xlabel 'Температура, K'" << std::endl;
+        script_file << "set ylabel 'Высота, м'" << std::endl;
+        script_file << "set grid" << std::endl;
+        script_file << "set key top right" << std::endl;
+        
+        // Инвертируем ось Y чтобы высота увеличивалась снизу вверх
+        script_file << "set yrange [" << h_end << ":" << h_start << "]" << std::endl;
+        
+        script_file << "plot '" << data_filename << "' with lines linewidth 2 linecolor rgb 'red' title 'Температура'" << std::endl;
+        script_file << "quit" << std::endl;
+        
+        script_file.close();
+        
+        std::string command = "gnuplot " + script_filename;
+        system(command.c_str());
+        
+        // Удаляем временные файлы
+        remove(data_filename.c_str());
+        remove(script_filename.c_str());
+        
+        std::cout << "Создан график слоя: layer_" << i << "_graph.png (" << layer_names[i] << ")" << std::endl;
+    }
+}
+
+// Функция для форматированного вывода параметров
+void print_atmosphere_params(double /*altitude*/, const AtmosphereParams& params) {
+    std::cout << "┌────────────────────────────────────────────────┐" << std::endl;
+    std::cout << "│ Высота геометрическая: " << std::setw(14) << format_with_6_significant(params.H_geom) << " м    │" << std::endl;
+    std::cout << "│ Высота геопотенциальная: " << std::setw(12) << format_with_6_significant(params.H_geo) << " м    │" << std::endl;
+    std::cout << "├────────────────────────────────────────────────┤" << std::endl;
+    std::cout << "│ Температура: " << std::setw(20) << format_with_6_significant(params.T - 273.15) << " °C   │" << std::endl;
+    std::cout << "│ Давление: " << std::setw(24) << format_with_6_significant(params.p) << " Па  │" << std::endl;
+    std::cout << "│ Плотность: " << std::setw(23) << format_with_6_significant(params.ro) << " кг/м³ │" << std::endl;
+    std::cout << "│ Скорость звука: " << std::setw(18) << format_with_6_significant(params.a) << " м/с   │" << std::endl;
+    std::cout << "│ Ускорение св. падения: " << std::setw(14) << format_with_6_significant(params.g) << " м/с²  │" << std::endl;
+    std::cout << "└────────────────────────────────────────────────┘" << std::endl;
+    std::cout << std::endl;
+}
+
+// Функция для создания таблицы параметров на разных высотах
+void create_altitude_table() {
+    std::vector<double> altitudes = {
+        0, 1000, 2000, 5000, 10000, 11000, 15000, 20000, 
+        25000, 32000, 40000, 47000, 51000, 60000, 71000, 
+        80000, 85000, 90000, 94000
+    };
+    
+    std::cout << "ТАБЛИЦА СТАНДАРТНОЙ АТМОСФЕРЫ ГОСТ 4401-81" << std::endl;
+    std::cout << "===========================================" << std::endl;
+    std::cout << std::endl;
+    
+    std::cout << std::setw(10) << "H_geom" 
+              << std::setw(10) << "H_geo"
+              << std::setw(12) << "Темп,°C" 
+              << std::setw(15) << "Давл,Па" 
+              << std::setw(15) << "Плотн,кг/м³" 
+              << std::setw(12) << "Звук,м/с" 
+              << std::setw(12) << "g,м/с²" << std::endl;
+    std::cout << std::string(86, '-') << std::endl;
+    
+    for (double alt : altitudes) {
+        try {
+            AtmosphereParams params = calculate_atmosphere(alt);
+            
+            std::cout << std::setw(10) << format_with_6_significant(params.H_geom);
+            std::cout << std::setw(10) << format_with_6_significant(params.H_geo);
+            std::cout << std::setw(12) << format_with_6_significant(params.T - 273.15);
+            std::cout << std::setw(15) << format_with_6_significant(params.p);
+            std::cout << std::setw(15) << format_with_6_significant(params.ro);
+            std::cout << std::setw(12) << format_with_6_significant(params.a);
+            std::cout << std::setw(12) << format_with_6_significant(params.g) << std::endl;
+            
+        } catch (const std::exception& e) {
+            std::cout << "Ошибка для высоты " << alt << " м: " << e.what() << std::endl;
+        }
+    }
 }
 
 int main() {
-    try {
-        std::cout << "РАСЧЕТ ПАРАМЕТРОВ АТМОСФЕРЫ ПО ГОСТ 4401-81\n";
-        std::cout << "Диапазон высот: от -2000 м до 94000 м\n\n";
-        
-        // Тестовые высоты для демонстрации
-        std::vector<double> test_altitudes = {
-            -1000.0, 0.0, 5000.0, 11000.0, 15000.0, 
-            25000.0, 35000.0, 45000.0, 50000.0, 
-            60000.0, 75000.0, 85000.0, 90000.0
-        };
-        
-        std::cout << "ТАБЛИЦА ПАРАМЕТРОВ АТМОСФЕРЫ:\n";
-        print_table_header();
-        
-        for (double alt : test_altitudes) {
-            AtmosphereParams params = calculate_atmosphere(alt);
-            print_results(alt, params);
+    std::cout << "СТАНДАРТНАЯ АТМОСФЕРА ГОСТ 4401-81" << std::endl;
+    std::cout << "==================================" << std::endl;
+    std::cout << std::endl;
+    
+    // Основная таблица параметров
+    create_altitude_table();
+    
+    // Создание графиков с высотой на вертикальной оси
+    create_all_graphs_vertical();
+    create_combined_graph_vertical();
+    create_zoomed_graphs_vertical();
+    create_atmospheric_layers_graphs();
+    
+    std::cout << std::endl;
+    std::cout << "ВСЕ ГРАФИКИ СОЗДАНЫ В ФАЙЛАХ PNG!" << std::endl;
+    std::cout << "=================================" << std::endl;
+    std::cout << "Созданные файлы (высота на вертикальной оси):" << std::endl;
+    std::cout << "- height_vs_temperature.png" << std::endl;
+    std::cout << "- height_vs_pressure.png" << std::endl;
+    std::cout << "- height_vs_density.png" << std::endl;
+    std::cout << "- height_vs_sound_speed.png" << std::endl;
+    std::cout << "- height_vs_gravity.png" << std::endl;
+    std::cout << "- combined_graph_vertical.png" << std::endl;
+    std::cout << "- troposphere_graph_vertical.png" << std::endl;
+    std::cout << "- layer_0_graph.png ... layer_7_graph.png (отдельные слои атмосферы)" << std::endl;
+    
+    // Интерактивный режим
+    std::cout << std::endl;
+    std::cout << "ИНТЕРАКТИВНЫЙ РЕЖИМ" << std::endl;
+    std::cout << "===================" << std::endl;
+    std::cout << "Введите высоту в метрах (или 'q' для выхода): ";
+    
+    double altitude;
+    while (std::cin >> altitude) {
+        try {
+            AtmosphereParams params = calculate_atmosphere(altitude);
+            print_atmosphere_params(altitude, params);
+        } catch (const std::exception& e) {
+            std::cerr << "Ошибка: " << e.what() << std::endl;
         }
-        
-        // Запрос пользовательской высоты
-        std::cout << "\n\n" << std::string(50, '=') << "\n";
-        std::cout << "Введите произвольную высоту от -2000 м до 94000 м: ";
-        double custom_altitude;
-        std::cin >> custom_altitude;
-        
-        if (custom_altitude < -2000.0 || custom_altitude > 94000.0) {
-            std::cout << "Ошибка: высота должна быть в диапазоне от -2000 м до 94000 м!\n";
-            return 1;
-        }
-        
-        AtmosphereParams custom_params = calculate_atmosphere(custom_altitude);
-        
-        std::cout << "\nРезультаты для высоты " << custom_altitude << " м:\n";
-        std::cout << "Геопотенциальная высота: " << custom_params.H << " м\n";
-        std::cout << "Температура: " << custom_params.T << " К\n";
-        std::cout << "Давление: " << custom_params.p << " Па\n";
-        std::cout << "Плотность: " << custom_params.ro << " кг/м³\n";
-        std::cout << "Скорость звука: " << custom_params.a << " м/с\n";
-        std::cout << "Ускорение свободного падения: " << custom_params.g << " м/с²\n";
-        
-        // Генерация графиков
-        std::cout << "\nХотите сгенерировать графики? (y/n): ";
-        char choice;
-        std::cin >> choice;
-        
-        if (choice == 'y' || choice == 'Y') {
-            generate_plots();
-        }
-        
-    } catch (const std::exception& e) {
-        std::cerr << "Ошибка: " << e.what() << std::endl;
-        return 1;
+        std::cout << "Введите следующую высоту (или 'q' для выхода): ";
     }
     
+    std::cout << "Завершение работы программы." << std::endl;
     return 0;
 }
