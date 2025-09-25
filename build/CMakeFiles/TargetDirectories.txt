@@ -1,4 +1,0 @@
-/Users/matthew/Documents/GitHub Projects/Ballistic-Models/build/CMakeFiles/atmosphere.dir
-/Users/matthew/Documents/GitHub Projects/Ballistic-Models/build/CMakeFiles/atmosphere_example.dir
-/Users/matthew/Documents/GitHub Projects/Ballistic-Models/build/CMakeFiles/edit_cache.dir
-/Users/matthew/Documents/GitHub Projects/Ballistic-Models/build/CMakeFiles/rebuild_cache.dir
