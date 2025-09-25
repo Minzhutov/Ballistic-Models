@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-// Структура для хранения параметров атмосферы
+
 typedef struct {
     double H_geom;  // Геометрическая высота, м
     double H_geo;   // Геопотенциальная высота, м
@@ -17,7 +17,6 @@ typedef struct {
 } AtmosphereParams;
 
 /**
- * Расчет параметров стандартной атмосферы по ГОСТ 4401-81
  * @param altitude - геометрическая высота над уровнем моря, м [-2000, 94000]
  * @return Структура с параметрами атмосферы
  * @throws std::invalid_argument если высота вне допустимого диапазона
@@ -28,4 +27,4 @@ AtmosphereParams calculate_atmosphere(double altitude);
 }
 #endif
 
-#endif // ATMOSPHERE_H
+#endif 

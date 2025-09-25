@@ -10,37 +10,31 @@
 #include <fstream>
 #include <cstdlib>
 
-// Функция для форматирования числа с 6 значащими цифрами в фиксированной нотации
+
 std::string format_with_6_significant(double value) {
     if (value == 0.0) return "0.00000";
     
-    // Определяем порядок числа
+
     int order = (value == 0) ? 0 : floor(log10(fabs(value)));
     
-    // Количество знаков после запятой
+
     int precision = 5 - order;
     
     std::stringstream ss;
     
     if (precision < 0) {
-        // Для больших чисел (order >= 5) - без дробной части
         ss << std::fixed << std::setprecision(0) << value;
     } else if (precision > 10) {
-        // Для очень малых чисел - научная нотация
         ss << std::scientific << std::setprecision(5) << value;
     } else {
-        // Фиксированная нотация с нужным количеством знаков
         ss << std::fixed << std::setprecision(precision) << value;
     }
     
     std::string result = ss.str();
     
-    // Удаляем лишние нули в конце
     size_t dot_pos = result.find('.');
     if (dot_pos != std::string::npos) {
-        // Удаляем trailing zeros
         result = result.erase(result.find_last_not_of('0') + 1);
-        // Если после точки ничего не осталось, удаляем точку
         if (result.back() == '.') {
             result.pop_back();
         }
@@ -49,7 +43,7 @@ std::string format_with_6_significant(double value) {
     return result;
 }
 
-// Функция для создания графика с высотой на вертикальной оси
+
 void create_gnuplot_graph_vertical(const std::vector<double>& altitudes, 
                                   const std::vector<double>& values,
                                   const std::string& output_filename,
@@ -58,7 +52,7 @@ void create_gnuplot_graph_vertical(const std::vector<double>& altitudes,
                                   const std::string& ylabel,
                                   bool logarithmic = false) {
     
-    // Создаем временный файл с данными
+
     std::string data_filename = "temp_data.dat";
     std::ofstream data_file(data_filename);
     
@@ -67,7 +61,7 @@ void create_gnuplot_graph_vertical(const std::vector<double>& altitudes,
     }
     data_file.close();
     
-    // Создаем скрипт для GNUplot
+
     std::string script_filename = "temp_script.plt";
     std::ofstream script_file(script_filename);
     
@@ -83,7 +77,7 @@ void create_gnuplot_graph_vertical(const std::vector<double>& altitudes,
         script_file << "set logscale x" << std::endl;
     }
     
-    // Инвертируем ось Y чтобы высота увеличивалась снизу вверх
+
     script_file << "set yrange [*:*] reverse" << std::endl;
     
     script_file << "plot '" << data_filename << "' with lines linewidth 2 linecolor rgb 'blue' title ''" << std::endl;
@@ -91,30 +85,26 @@ void create_gnuplot_graph_vertical(const std::vector<double>& altitudes,
     
     script_file.close();
     
-    // Запускаем GNUplot
+
     std::string command = "gnuplot " + script_filename;
     system(command.c_str());
     
-    // Удаляем временные файлы
     remove(data_filename.c_str());
     remove(script_filename.c_str());
     
     std::cout << "Создан график: " << output_filename << std::endl;
 }
 
-// Функция для создания всех графиков с высотой на вертикальной оси
 void create_all_graphs_vertical() {
     std::cout << std::endl;
     std::cout << "СОЗДАНИЕ ГРАФИКОВ (ВЫСОТА НА ВЕРТИКАЛЬНОЙ ОСИ)" << std::endl;
     std::cout << "=============================================" << std::endl;
     
-    // Создаем набор высот для построения графиков
     std::vector<double> altitudes;
     for (double h = 0; h <= 94000; h += 100) {
         altitudes.push_back(h);
     }
-    
-    // Собираем данные для каждого графика
+
     std::vector<double> temperatures, pressures, densities, sound_speeds, gravities;
     
     for (double h : altitudes) {
@@ -126,7 +116,6 @@ void create_all_graphs_vertical() {
             sound_speeds.push_back(params.a);
             gravities.push_back(params.g);
         } catch (const std::exception& e) {
-            // Пропускаем ошибки
         }
     }
     
@@ -152,11 +141,9 @@ void create_all_graphs_vertical() {
                                  "Ускорение свободного падения, м/с²", "Высота, м");
 }
 
-// Функция для создания совмещенного графика с высотой на вертикальной оси
 void create_combined_graph_vertical() {
     std::cout << std::endl;
-    std::cout << "СОЗДАНИЕ СОВМЕЩЕННОГО ГРАФИКА (ВЫСОТА НА ВЕРТИКАЛЬНОЙ ОСИ)" << std::endl;
-    std::cout << "=========================================================" << std::endl;
+    
     
     std::vector<double> altitudes;
     for (double h = 0; h <= 94000; h += 100) {
@@ -199,7 +186,7 @@ void create_combined_graph_vertical() {
     script_file << "set logscale x2" << std::endl;
     script_file << "set x2tics" << std::endl;
     
-    // Инвертируем ось Y чтобы высота увеличивалась снизу вверх
+
     script_file << "set yrange [*:*] reverse" << std::endl;
     
     script_file << "plot '" << data_filename << "' using 1:4 with lines linewidth 2 linecolor rgb 'red' title 'Температура', \\" << std::endl;
@@ -209,21 +196,15 @@ void create_combined_graph_vertical() {
     
     script_file.close();
     
-    // Запускаем GNUplot
     system("gnuplot temp_combined.plt");
     
-    // Удаляем временные файлы
     remove(data_filename.c_str());
     remove(script_filename.c_str());
     
     std::cout << "Создан совмещенный график: combined_graph_vertical.png" << std::endl;
 }
 
-// Функция для создания графиков в разных масштабах с высотой на вертикальной оси
 void create_zoomed_graphs_vertical() {
-    std::cout << std::endl;
-    std::cout << "СОЗДАНИЕ ГРАФИКОВ В РАЗНЫХ МАСШТАБАХ (ВЫСОТА НА ВЕРТИКАЛЬНОЙ ОСИ)" << std::endl;
-    std::cout << "=================================================================" << std::endl;
     
     std::vector<double> altitudes_troposphere;
     for (double h = 0; h <= 15000; h += 50) {
@@ -264,7 +245,6 @@ void create_zoomed_graphs_vertical() {
     script_file << "set logscale x2" << std::endl;
     script_file << "set x2tics" << std::endl;
     
-    // Инвертируем ось Y чтобы высота увеличивалась снизу вверх
     script_file << "set yrange [*:*] reverse" << std::endl;
     
     script_file << "plot '" << data_filename << "' using 1:4 with lines linewidth 2 linecolor rgb 'red' title 'Температура', \\" << std::endl;
@@ -280,13 +260,8 @@ void create_zoomed_graphs_vertical() {
     std::cout << "Создан график тропосферы: troposphere_graph_vertical.png" << std::endl;
 }
 
-// Функция для создания графиков отдельных слоев атмосферы
 void create_atmospheric_layers_graphs() {
-    std::cout << std::endl;
-    std::cout << "СОЗДАНИЕ ГРАФИКОВ ДЛЯ ОТДЕЛЬНЫХ СЛОЕВ АТМОСФЕРЫ" << std::endl;
-    std::cout << "==============================================" << std::endl;
     
-    // Определяем границы слоев
     std::vector<std::pair<double, double>> layers = {
         {0, 11000},      // Тропосфера
         {11000, 20000},  // Нижняя стратосфера
@@ -324,7 +299,7 @@ void create_atmospheric_layers_graphs() {
         
         if (altitudes.empty()) continue;
         
-        // Создаем данные для графика
+
         std::string data_filename = "temp_layer_" + std::to_string(i) + ".dat";
         std::ofstream data_file(data_filename);
         
@@ -333,7 +308,7 @@ void create_atmospheric_layers_graphs() {
         }
         data_file.close();
         
-        // Скрипт для графика слоя
+
         std::string script_filename = "temp_layer_" + std::to_string(i) + ".plt";
         std::ofstream script_file(script_filename);
         
@@ -356,7 +331,7 @@ void create_atmospheric_layers_graphs() {
         std::string command = "gnuplot " + script_filename;
         system(command.c_str());
         
-        // Удаляем временные файлы
+
         remove(data_filename.c_str());
         remove(script_filename.c_str());
         
@@ -364,7 +339,6 @@ void create_atmospheric_layers_graphs() {
     }
 }
 
-// Функция для форматированного вывода параметров
 void print_atmosphere_params(double /*altitude*/, const AtmosphereParams& params) {
     std::cout << "┌────────────────────────────────────────────────┐" << std::endl;
     std::cout << "│ Высота геометрическая: " << std::setw(14) << format_with_6_significant(params.H_geom) << " м    │" << std::endl;
@@ -379,7 +353,7 @@ void print_atmosphere_params(double /*altitude*/, const AtmosphereParams& params
     std::cout << std::endl;
 }
 
-// Функция для создания таблицы параметров на разных высотах
+
 void create_altitude_table() {
     std::vector<double> altitudes = {
         0, 1000, 2000, 5000, 10000, 11000, 15000, 20000, 
@@ -423,10 +397,9 @@ int main() {
     std::cout << "==================================" << std::endl;
     std::cout << std::endl;
     
-    // Основная таблица параметров
     create_altitude_table();
     
-    // Создание графиков с высотой на вертикальной оси
+
     create_all_graphs_vertical();
     create_combined_graph_vertical();
     create_zoomed_graphs_vertical();
@@ -445,7 +418,6 @@ int main() {
     std::cout << "- troposphere_graph_vertical.png" << std::endl;
     std::cout << "- layer_0_graph.png ... layer_7_graph.png (отдельные слои атмосферы)" << std::endl;
     
-    // Интерактивный режим
     std::cout << std::endl;
     std::cout << "ИНТЕРАКТИВНЫЙ РЕЖИМ" << std::endl;
     std::cout << "===================" << std::endl;

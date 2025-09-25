@@ -150,7 +150,7 @@ void calculate_thermosphere(double H_geo, double& T, double& P) {
     P = pressure_with_gradient(P_MESOSPHERE3, T_MESOSPHERE3, 0.0, H_geo, H_base_geo);
 }
 
-} // namespace
+} 
 
 extern "C" AtmosphereParams calculate_atmosphere(double altitude) {
     if (altitude < -2000.0 || altitude > 94000.0) {
@@ -161,18 +161,14 @@ extern "C" AtmosphereParams calculate_atmosphere(double altitude) {
     
     AtmosphereParams result;
     
-    // Сохраняем геометрическую высоту
     result.H_geom = altitude;
-    
-    // Вычисляем геопотенциальную высоту
+
     result.H_geo = calculate_geopotential_height(altitude);
-    
-    // Вычисляем ускорение свободного падения
+
     result.g = calculate_gravity(altitude);
     
     double T, P;
     
-    // Выбираем соответствующий слой атмосферы
     if (altitude <= H_TROPOSPHERE) {
         calculate_troposphere(result.H_geo, T, P);
     } else if (altitude <= H_STRATOSPHERE1) {
