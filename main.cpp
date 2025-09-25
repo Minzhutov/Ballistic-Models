@@ -225,7 +225,6 @@ void create_zoomed_graphs_vertical() {
     std::cout << "СОЗДАНИЕ ГРАФИКОВ В РАЗНЫХ МАСШТАБАХ (ВЫСОТА НА ВЕРТИКАЛЬНОЙ ОСИ)" << std::endl;
     std::cout << "=================================================================" << std::endl;
     
-    // График для тропосферы (0-15 км)
     std::vector<double> altitudes_troposphere;
     for (double h = 0; h <= 15000; h += 50) {
         altitudes_troposphere.push_back(h);
@@ -240,11 +239,9 @@ void create_zoomed_graphs_vertical() {
             press_trop.push_back(params.p);
             dens_trop.push_back(params.ro);
         } catch (const std::exception& e) {
-            // Пропускаем ошибки
         }
     }
     
-    // Создаем данные для графика тропосферы
     std::string data_filename = "temp_troposphere.dat";
     std::ofstream data_file(data_filename);
     
@@ -253,7 +250,6 @@ void create_zoomed_graphs_vertical() {
     }
     data_file.close();
     
-    // Скрипт для графика тропосферы
     std::string script_filename = "temp_troposphere.plt";
     std::ofstream script_file(script_filename);
     
@@ -313,8 +309,7 @@ void create_atmospheric_layers_graphs() {
         
         std::vector<double> altitudes;
         std::vector<double> temperatures;
-        
-        // Создаем точки с разным шагом в зависимости от слоя
+
         double step = (h_end - h_start) / 100.0;
         if (step < 10) step = 10;
         
@@ -324,7 +319,6 @@ void create_atmospheric_layers_graphs() {
                 altitudes.push_back(h);
                 temperatures.push_back(params.T);
             } catch (const std::exception& e) {
-                // Пропускаем ошибки
             }
         }
         
