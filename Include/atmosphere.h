@@ -5,7 +5,6 @@
 extern "C" {
 #endif
 
-
 typedef struct {
     double H_geom;  // Геометрическая высота, м
     double H_geo;   // Геопотенциальная высота, м
@@ -27,4 +26,4 @@ AtmosphereParams calculate_atmosphere(double altitude);
 }
 #endif
 
-#endif 
+#endif

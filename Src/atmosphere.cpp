@@ -53,11 +53,6 @@ double calculate_geopotential_height(double geometric_height) {
     return (R_EARTH * geometric_height) / (R_EARTH + geometric_height);
 }
 
-// Геометрическая высота: h = (R * H) / (R - H)
-double calculate_geometric_height(double geopotential_height) {
-    return (R_EARTH * geopotential_height) / (R_EARTH - geopotential_height);
-}
-
 // Ускорение свободного падения: g = g0 * (R/(R+h))^2
 double calculate_gravity(double geometric_height) {
     double ratio = R_EARTH / (R_EARTH + geometric_height);
@@ -162,9 +157,7 @@ extern "C" AtmosphereParams calculate_atmosphere(double altitude) {
     AtmosphereParams result;
     
     result.H_geom = altitude;
-
     result.H_geo = calculate_geopotential_height(altitude);
-
     result.g = calculate_gravity(altitude);
     
     double T, P;

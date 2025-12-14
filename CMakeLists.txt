@@ -1,18 +1,25 @@
 cmake_minimum_required(VERSION 3.10)
-project(Atmosphere)  
+project(TrajectoryProject)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Указываем, что include директория содержит заголовочные файлы
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-add_executable(atmosphere_app main.cpp atmosphere.cpp)
+# Добавляем исполняемый файл
+add_executable(trajectory_calc
+    main.cpp
+    src/Atmosphere.cpp
+    src/trajectory.cpp
+)
 
-
+# Настройки компилятора
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(atmosphere_app PRIVATE -Wall -Wextra -pedantic)
+    target_compile_options(trajectory_calc PRIVATE -Wall -Wextra)
 endif()
 
-
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    target_compile_options(atmosphere_app PRIVATE -std=c++11)
+# Для Windows
+if(WIN32)
+    target_compile_definitions(trajectory_calc PRIVATE _USE_MATH_DEFINES)
 endif()
