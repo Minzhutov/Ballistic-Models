@@ -7,20 +7,23 @@
 
 // Структура для хранения параметров траектории
 struct TrajectoryPoint {
-    double t;           // Время, с
-    double m;           // Масса, кг
-    double P;           // Тяга, Н
-    double V;           // Скорость, м/с
-    double M;           // Число Маха
-    double Cxa;         // Коэффициент лобового сопротивления
-    double alpha;       // Угол атаки, град
-    double theta_c;     // Угол наклона траектории, град
-    double Cya_alpha;   // Производная коэффициента подъёмной силы по углу атаки
-    double omega_z;     // Угловая скорость вращения, с^-1
-    double theta;       // Угол тангажа, град
-    double y;           // Высота, м
-    double x;           // Дальность, м
-    double g;           // Ускорение свободного падения, м/с²
+    double t;
+    double V;
+    double theta_c;
+    double x;
+    double y;
+    double omega_z;
+    double theta;
+    double m;
+    double P;
+    double g;
+    double M;
+    double Cxa;
+    double Cya_alpha;
+    double V_dot;
+    double alpha;
+    double x_dotc; // ← добавить
+    double y_dotc; // ← добавить
 };
 
 // Перечисление для выбора метода интегрирования

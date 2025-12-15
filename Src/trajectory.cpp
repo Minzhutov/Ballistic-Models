@@ -57,7 +57,9 @@ TrajectoryCalculator::TrajectoryCalculator(double V0, double theta_c0, double m_
 
 // Добавление точки траектории
 void TrajectoryCalculator::addTrajectoryPoint(std::vector<TrajectoryPoint>& trajectory, double t, 
-                                             const std::vector<double>& state, AlphaLaw alpha_law) const {
+                                             const std::vector<double>& state, 
+                                             const std::vector<double>& derivatives,
+                                             AlphaLaw alpha_law) const {
     TrajectoryPoint point;
     point.t = t;
     point.V = state[0];
@@ -68,8 +70,21 @@ void TrajectoryCalculator::addTrajectoryPoint(std::vector<TrajectoryPoint>& traj
     point.theta = state[5];
     point.m = state[6];
     
-    // Тяга (упрощённая формула)
     point.P = m_dot * W;
+
+    if (derivatives.size() >= 7) {
+        point.V_dot = derivatives[0];   // dV/dt
+        // point.theta_c_dot = derivatives[1]; // если нужно
+        point.x_dotc = derivatives[2];  // dx/dt
+        point.y_dotc = derivatives[3];  // dy/dt
+        // point.omega_z_dot = derivatives[4]; // если нужно
+        // point.theta_dot = derivatives[5];   // если нужно
+        // point.m_dot = derivatives[6];       // если нужно
+    } else {
+        point.V_dot = 0.0;
+        point.x_dotc = 0.0;
+        point.y_dotc = 0.0;
+    }
     
     // Защита от отрицательной высоты
     if (point.y < 0) point.y = 0;
@@ -98,6 +113,12 @@ void TrajectoryCalculator::addTrajectoryPoint(std::vector<TrajectoryPoint>& traj
         point.alpha = 0.0;
     }
     
+    std::vector<double> derivatives;
+    calculateDerivatives(t, state, derivatives, alpha_law);
+
+    point.x_dotc = derivatives[2];
+    point.y_dotc = derivatives[3];
+
     trajectory.push_back(point);
 }
 
@@ -355,7 +376,6 @@ std::vector<TrajectoryPoint> TrajectoryCalculator::calculateTrajectory(Integrati
     }
 }
 
-// Сохранение результатов в файл
 void TrajectoryCalculator::saveResultsToFile(const std::vector<TrajectoryPoint>& trajectory, 
                                             const std::string& filename) const {
     std::ofstream file(filename);
@@ -364,9 +384,10 @@ void TrajectoryCalculator::saveResultsToFile(const std::vector<TrajectoryPoint>&
         return;
     }
     
-    // Заголовок
+    // Обновленный заголовок с V_dot
     file << "N\tt(c)\tm(kg)\tP(H)\tV(m/s)\tM\tCxa\talpha(grad)\ttheta_c(grad)\t"
-         << "Cya_alpha\tomega_z(1/s)\ttheta(grad)\ty(m)\tx(m)\tg(m/s2)\n";
+         << "Cya_alpha\tomega_z(1/s)\ttheta(grad)\ty(m)\tx(m)\tg(m/s2)\t"
+         << "x_dotc(m/s)\ty_dotc(m/s)\tV_dot(m/s2)\n";  // ← добавил V_dot
     
     // Данные
     for (size_t i = 0; i < trajectory.size(); ++i) {
@@ -385,14 +406,16 @@ void TrajectoryCalculator::saveResultsToFile(const std::vector<TrajectoryPoint>&
              << std::setprecision(2) << p.theta << "\t"
              << std::setprecision(2) << p.y << "\t"
              << std::setprecision(2) << p.x << "\t"
-             << std::setprecision(4) << p.g << "\n";
+             << std::setprecision(4) << p.g << "\t"
+             << std::setprecision(3) << p.x_dotc << "\t"   // ← добавил
+             << std::setprecision(3) << p.y_dotc << "\t"   // ← добавил
+             << std::setprecision(3) << p.V_dot << "\n";   // ← добавил
     }
     
     file.close();
     std::cout << "Результаты сохранены в файл: " << filename << std::endl;
 }
 
-// Печать таблицы результатов
 void TrajectoryCalculator::printResultsTable(const std::vector<TrajectoryPoint>& trajectory) const {
     if (trajectory.empty()) {
         std::cout << "Траектория пуста!\n";
@@ -404,13 +427,14 @@ void TrajectoryCalculator::printResultsTable(const std::vector<TrajectoryPoint>&
     std::cout << std::setw(4) << "N" 
               << std::setw(8) << "t(c)" 
               << std::setw(8) << "V(m/s)"
+              << std::setw(8) << "V_dot"
               << std::setw(8) << "M"
               << std::setw(8) << "alpha"
               << std::setw(10) << "theta_c"
               << std::setw(8) << "y(m)"
               << std::setw(10) << "x(m)"
               << std::setw(8) << "m(kg)\n";
-    std::cout << std::string(70, '-') << "\n";
+    std::cout << std::string(80, '-') << "\n";
     
     // Выводим каждую 5-ю точку для компактности
     size_t step = trajectory.size() > 25 ? trajectory.size() / 25 : 1;
@@ -421,6 +445,7 @@ void TrajectoryCalculator::printResultsTable(const std::vector<TrajectoryPoint>&
         std::cout << std::setw(4) << i+1
                   << std::setw(8) << std::fixed << std::setprecision(1) << p.t
                   << std::setw(8) << std::setprecision(1) << p.V
+                  << std::setw(8) << std::setprecision(2) << p.V_dot  // ← добавил V_dot
                   << std::setw(8) << std::setprecision(3) << p.M
                   << std::setw(8) << std::setprecision(2) << p.alpha
                   << std::setw(10) << std::setprecision(2) << p.theta_c
@@ -434,7 +459,10 @@ void TrajectoryCalculator::printResultsTable(const std::vector<TrajectoryPoint>&
     const TrajectoryPoint& last = trajectory.back();
     std::cout << "Время полета: " << last.t << " с\n";
     std::cout << "Конечная скорость: " << last.V << " м/с\n";
+    std::cout << "Конечное ускорение (V_dot): " << last.V_dot << " м/с²\n";
     std::cout << "Конечная высота: " << last.y << " м\n";
     std::cout << "Конечная дальность: " << last.x << " м\n";
     std::cout << "Конечная масса: " << last.m << " кг\n";
+    std::cout << "Горизонтальная скорость (x_dotc): " << last.x_dotc << " м/с\n";
+    std::cout << "Вертикальная скорость (y_dotc): " << last.y_dotc << " м/с\n";
 }

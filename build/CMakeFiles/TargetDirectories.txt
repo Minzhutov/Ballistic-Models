@@ -1,3 +1,0 @@
-C:/Dev/Ballistic-Models-1/build/CMakeFiles/trajectory_calc.dir
-C:/Dev/Ballistic-Models-1/build/CMakeFiles/ALL_BUILD.dir
-C:/Dev/Ballistic-Models-1/build/CMakeFiles/ZERO_CHECK.dir
