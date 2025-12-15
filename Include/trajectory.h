@@ -59,10 +59,15 @@ private:
     std::vector<TrajectoryPoint> integrateRungeKutta4(double dt, AlphaLaw alpha_law) const;
     
 public:
-    // Методы вывода результатов
     void printResultsTable(const std::vector<TrajectoryPoint>& trajectory) const;
     void saveResultsToFile(const std::vector<TrajectoryPoint>& trajectory, 
                           const std::string& filename) const;
-};
 
+
+public:
+    void saveGraphData(const std::vector<TrajectoryPoint>& trajectory, 
+                      const std::string& base_filename) const;
+
+
+};
 #endif

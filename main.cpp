@@ -4,6 +4,7 @@
 #include <string>
 #include <filesystem>
 #include <iomanip>
+#include <fstream>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -19,6 +20,7 @@ int main() {
         // Для корректного вывода wide‑строк (если захотите)
         _setmode(_fileno(stdout), _O_U16TEXT);
     #endif
+    
     // Создаем папку для результатов
     std::filesystem::create_directory("results");
     
@@ -69,8 +71,12 @@ int main() {
             calculator.printResultsTable(trajectory);
             
             std::string filename = "results/euler_alpha_theta_dt_" + 
-                                  std::to_string(dt).substr(0,4) + ".txt";
-            calculator.saveResultsToFile(trajectory, filename);
+                                  std::to_string(dt).substr(0,4);
+            calculator.saveResultsToFile(trajectory, filename + ".txt");
+            
+            // Сохраняем данные для графиков
+            calculator.saveGraphData(trajectory, filename + "_graph");
+            
         } catch (const std::exception& e) {
             std::cerr << "Ошибка: " << e.what() << std::endl;
         }
@@ -81,8 +87,12 @@ int main() {
             calculator.printResultsTable(trajectory);
             
             std::string filename = "results/euler_alpha_zero_dt_" + 
-                                  std::to_string(dt).substr(0,4) + ".txt";
-            calculator.saveResultsToFile(trajectory, filename);
+                                  std::to_string(dt).substr(0,4);
+            calculator.saveResultsToFile(trajectory, filename + ".txt");
+            
+            // Сохраняем данные для графиков
+            calculator.saveGraphData(trajectory, filename + "_graph");
+            
         } catch (const std::exception& e) {
             std::cerr << "Ошибка: " << e.what() << std::endl;
         }
@@ -100,8 +110,12 @@ int main() {
             calculator.printResultsTable(trajectory);
             
             std::string filename = "results/modified_euler_alpha_theta_dt_" + 
-                                  std::to_string(dt).substr(0,4) + ".txt";
-            calculator.saveResultsToFile(trajectory, filename);
+                                  std::to_string(dt).substr(0,4);
+            calculator.saveResultsToFile(trajectory, filename + ".txt");
+            
+            // Сохраняем данные для графиков
+            calculator.saveGraphData(trajectory, filename + "_graph");
+            
         } catch (const std::exception& e) {
             std::cerr << "Ошибка: " << e.what() << std::endl;
         }
@@ -112,8 +126,12 @@ int main() {
             calculator.printResultsTable(trajectory);
             
             std::string filename = "results/modified_euler_alpha_zero_dt_" + 
-                                  std::to_string(dt).substr(0,4) + ".txt";
-            calculator.saveResultsToFile(trajectory, filename);
+                                  std::to_string(dt).substr(0,4);
+            calculator.saveResultsToFile(trajectory, filename + ".txt");
+            
+            // Сохраняем данные для графиков
+            calculator.saveGraphData(trajectory, filename + "_graph");
+            
         } catch (const std::exception& e) {
             std::cerr << "Ошибка: " << e.what() << std::endl;
         }
@@ -129,7 +147,13 @@ int main() {
     try {
         auto trajectory = calculator.calculateTrajectory(RUNGE_KUTTA_4, ALPHA_THETA_MINUS_THETAC, dt_rk4);
         calculator.printResultsTable(trajectory);
-        calculator.saveResultsToFile(trajectory, "results/runge_kutta4_alpha_theta_dt_0.1.txt");
+        
+        std::string filename = "results/runge_kutta4_alpha_theta_dt_0.1";
+        calculator.saveResultsToFile(trajectory, filename + ".txt");
+        
+        // Сохраняем данные для графиков
+        calculator.saveGraphData(trajectory, filename + "_graph");
+        
     } catch (const std::exception& e) {
         std::cerr << "Ошибка: " << e.what() << std::endl;
     }
@@ -138,13 +162,63 @@ int main() {
     try {
         auto trajectory = calculator.calculateTrajectory(RUNGE_KUTTA_4, ALPHA_ZERO, dt_rk4);
         calculator.printResultsTable(trajectory);
-        calculator.saveResultsToFile(trajectory, "results/runge_kutta4_alpha_zero_dt_0.1.txt");
+        
+        std::string filename = "results/runge_kutta4_alpha_zero_dt_0.1";
+        calculator.saveResultsToFile(trajectory, filename + ".txt");
+        
+        // Сохраняем данные для графиков
+        calculator.saveGraphData(trajectory, filename + "_graph");
+        
     } catch (const std::exception& e) {
         std::cerr << "Ошибка: " << e.what() << std::endl;
     }
     
-    std::cout << "\n\nРАСЧЕТ ЗАВЕРШЕН!\n";
-    std::cout << "Все результаты сохранены в папке 'results/'\n";
+    // Дополнительно: сравнительный анализ для шага 0.1 с
+    std::cout << "\n\nСРАВНИТЕЛЬНЫЙ АНАЛИЗ (шаг 0.1 с)\n";
+    std::cout << "================================\n";
+    
+    std::cout << "\nДля α = θ - θс, dt = 0.1 с:\n";
+    try {
+        auto trajectory_euler = calculator.calculateTrajectory(EULER, ALPHA_THETA_MINUS_THETAC, 0.1);
+        auto trajectory_modified = calculator.calculateTrajectory(MODIFIED_EULER, ALPHA_THETA_MINUS_THETAC, 0.1);
+        auto trajectory_rk4 = calculator.calculateTrajectory(RUNGE_KUTTA_4, ALPHA_THETA_MINUS_THETAC, 0.1);
+        
+        std::cout << "Метод Эйлера: конечная высота = " << trajectory_euler.back().y 
+                  << " м, скорость = " << trajectory_euler.back().V << " м/с\n";
+        std::cout << "Мод. Эйлера: конечная высота = " << trajectory_modified.back().y 
+                  << " м, скорость = " << trajectory_modified.back().V << " м/с\n";
+        std::cout << "Рунге-Кутта 4: конечная высота = " << trajectory_rk4.back().y 
+                  << " м, скорость = " << trajectory_rk4.back().V << " м/с\n";
+        
+        // Сохраняем сравнительные данные
+        std::ofstream comp_file("results/comparison_alpha_theta.txt");
+        if (comp_file.is_open()) {
+            comp_file << "Метод\tКонечное время (с)\tКонечная высота (м)\tКонечная скорость (м/с)\t"
+                     << "Конечная дальность (м)\tКонечная масса (кг)\n";
+            comp_file << "Эйлер\t" << trajectory_euler.back().t << "\t" 
+                     << trajectory_euler.back().y << "\t" << trajectory_euler.back().V << "\t"
+                     << trajectory_euler.back().x << "\t" << trajectory_euler.back().m << "\n";
+            comp_file << "Мод.Эйлер\t" << trajectory_modified.back().t << "\t" 
+                     << trajectory_modified.back().y << "\t" << trajectory_modified.back().V << "\t"
+                     << trajectory_modified.back().x << "\t" << trajectory_modified.back().m << "\n";
+            comp_file << "Рунге-Кутта4\t" << trajectory_rk4.back().t << "\t" 
+                     << trajectory_rk4.back().y << "\t" << trajectory_rk4.back().V << "\t"
+                     << trajectory_rk4.back().x << "\t" << trajectory_rk4.back().m << "\n";
+            comp_file.close();
+            std::cout << "Сравнительные данные сохранены в results/comparison_alpha_theta.txt\n";
+        }
+        
+    } catch (const std::exception& e) {
+        std::cerr << "Ошибка при сравнении: " << e.what() << std::endl;
+    }
+    
+    std::cout << "\nРАСЧЕТ ЗАВЕРШЕН!\n";
+    std::cout << "Все результаты сохранены в папке 'results/'\n\n";
+    
+    std::cout << "Для построения графиков выполните:\n";
+    std::cout << "1. Установите Python и matplotlib: pip install matplotlib numpy\n";
+    std::cout << "2. Запустите скрипт: python plot_results.py\n";
+    std::cout << "3. Откройте отчет: open results/report.html\n";
     
     return 0;
 }

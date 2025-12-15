@@ -369,7 +369,161 @@ std::vector<TrajectoryPoint> TrajectoryCalculator::integrateRungeKutta4(double d
     return trajectory;
 }
 
-// Основная функция расчёта траектории
+// Сохранение данных для графиков
+void TrajectoryCalculator::saveGraphData(const std::vector<TrajectoryPoint>& trajectory, 
+                                        const std::string& base_filename) const {
+    if (trajectory.empty()) {
+        std::cerr << "Траектория пуста, данные для графиков не могут быть сохранены\n";
+        return;
+    }
+    
+    // 1. V(t) - Скорость от времени
+    std::ofstream file_vt(base_filename + "_Vt.txt");
+    if (file_vt.is_open()) {
+        file_vt << "t(c)\tV(m/s)\n";
+        for (const auto& p : trajectory) {
+            file_vt << std::fixed << std::setprecision(3) << p.t << "\t"
+                   << std::setprecision(3) << p.V << "\n";
+        }
+        file_vt.close();
+        std::cout << "Данные для графика V(t) сохранены в: " << base_filename + "_Vt.txt\n";
+    }
+    
+    // 2. θ_c(t) - Угол наклона траектории от времени
+    std::ofstream file_thetact(base_filename + "_thetact.txt");
+    if (file_thetact.is_open()) {
+        file_thetact << "t(c)\ttheta_c(grad)\n";
+        for (const auto& p : trajectory) {
+            file_thetact << std::fixed << std::setprecision(3) << p.t << "\t"
+                        << std::setprecision(3) << p.theta_c << "\n";
+        }
+        file_thetact.close();
+        std::cout << "Данные для графика theta_c(t) сохранены в: " << base_filename + "_thetact.txt\n";
+    }
+    
+    // 3. y(t) - Высота от времени
+    std::ofstream file_yt(base_filename + "_yt.txt");
+    if (file_yt.is_open()) {
+        file_yt << "t(c)\ty(m)\n";
+        for (const auto& p : trajectory) {
+            file_yt << std::fixed << std::setprecision(3) << p.t << "\t"
+                   << std::setprecision(2) << p.y << "\n";
+        }
+        file_yt.close();
+        std::cout << "Данные для графика y(t) сохранены в: " << base_filename + "_yt.txt\n";
+    }
+    
+    // 4. x(t) - Дальность от времени
+    std::ofstream file_xt(base_filename + "_xt.txt");
+    if (file_xt.is_open()) {
+        file_xt << "t(c)\tx(m)\n";
+        for (const auto& p : trajectory) {
+            file_xt << std::fixed << std::setprecision(3) << p.t << "\t"
+                   << std::setprecision(2) << p.x << "\n";
+        }
+        file_xt.close();
+        std::cout << "Данные для графика x(t) сохранены в: " << base_filename + "_xt.txt\n";
+    }
+    
+    // 5. ω_z(t) - Угловая скорость от времени
+    std::ofstream file_omegazt(base_filename + "_omegazt.txt");
+    if (file_omegazt.is_open()) {
+        file_omegazt << "t(c)\tomega_z(1/s)\n";
+        for (const auto& p : trajectory) {
+            file_omegazt << std::fixed << std::setprecision(3) << p.t << "\t"
+                        << std::setprecision(4) << p.omega_z << "\n";
+        }
+        file_omegazt.close();
+        std::cout << "Данные для графика omega_z(t) сохранены в: " << base_filename + "_omegazt.txt\n";
+    }
+    
+    // 6. θ(t) - Угол тангажа от времени
+    std::ofstream file_thetat(base_filename + "_thetat.txt");
+    if (file_thetat.is_open()) {
+        file_thetat << "t(c)\ttheta(grad)\n";
+        for (const auto& p : trajectory) {
+            file_thetat << std::fixed << std::setprecision(3) << p.t << "\t"
+                       << std::setprecision(3) << p.theta << "\n";
+        }
+        file_thetat.close();
+        std::cout << "Данные для графика theta(t) сохранены в: " << base_filename + "_thetat.txt\n";
+    }
+    
+    // 7. α(t) - Угол атаки от времени
+    std::ofstream file_alphat(base_filename + "_alphat.txt");
+    if (file_alphat.is_open()) {
+        file_alphat << "t(c)\talpha(grad)\n";
+        for (const auto& p : trajectory) {
+            file_alphat << std::fixed << std::setprecision(3) << p.t << "\t"
+                       << std::setprecision(3) << p.alpha << "\n";
+        }
+        file_alphat.close();
+        std::cout << "Данные для графика alpha(t) сохранены в: " << base_filename + "_alphat.txt\n";
+    }
+    
+    // 8. V(x) - Скорость от дальности
+    std::ofstream file_vx(base_filename + "_Vx.txt");
+    if (file_vx.is_open()) {
+        file_vx << "x(m)\tV(m/s)\n";
+        for (const auto& p : trajectory) {
+            file_vx << std::fixed << std::setprecision(2) << p.x << "\t"
+                   << std::setprecision(3) << p.V << "\n";
+        }
+        file_vx.close();
+        std::cout << "Данные для графика V(x) сохранены в: " << base_filename + "_Vx.txt\n";
+    }
+    
+    // 9. θ_c(x) - Угол наклона траектории от дальности
+    std::ofstream file_thetacx(base_filename + "_thetacx.txt");
+    if (file_thetacx.is_open()) {
+        file_thetacx << "x(m)\ttheta_c(grad)\n";
+        for (const auto& p : trajectory) {
+            file_thetacx << std::fixed << std::setprecision(2) << p.x << "\t"
+                        << std::setprecision(3) << p.theta_c << "\n";
+        }
+        file_thetacx.close();
+        std::cout << "Данные для графика theta_c(x) сохранены в: " << base_filename + "_thetacx.txt\n";
+    }
+    
+    // 10. y(x) - Высота от дальности (траектория)
+    std::ofstream file_yx(base_filename + "_yx.txt");
+    if (file_yx.is_open()) {
+        file_yx << "x(m)\ty(m)\n";
+        for (const auto& p : trajectory) {
+            file_yx << std::fixed << std::setprecision(2) << p.x << "\t"
+                   << std::setprecision(2) << p.y << "\n";
+        }
+        file_yx.close();
+        std::cout << "Данные для графика y(x) сохранены в: " << base_filename + "_yx.txt\n";
+    }
+    
+    // 11. Сводный файл со всеми параметрами для комплексного анализа
+    std::ofstream file_summary(base_filename + "_summary.txt");
+    if (file_summary.is_open()) {
+        file_summary << "t(c)\tx(m)\ty(m)\tV(m/s)\ttheta_c(grad)\ttheta(grad)\talpha(grad)\t"
+                    << "omega_z(1/s)\tM\tCxa\tCya_alpha\tm(kg)\tP(H)\tg(m/s2)\n";
+        for (const auto& p : trajectory) {
+            file_summary << std::fixed << std::setprecision(3) << p.t << "\t"
+                        << std::setprecision(2) << p.x << "\t"
+                        << std::setprecision(2) << p.y << "\t"
+                        << std::setprecision(3) << p.V << "\t"
+                        << std::setprecision(3) << p.theta_c << "\t"
+                        << std::setprecision(3) << p.theta << "\t"
+                        << std::setprecision(3) << p.alpha << "\t"
+                        << std::setprecision(4) << p.omega_z << "\t"
+                        << std::setprecision(4) << p.M << "\t"
+                        << std::setprecision(4) << p.Cxa << "\t"
+                        << std::setprecision(4) << p.Cya_alpha << "\t"
+                        << std::setprecision(2) << p.m << "\t"
+                        << std::setprecision(1) << p.P << "\t"
+                        << std::setprecision(4) << p.g << "\n";
+        }
+        file_summary.close();
+        std::cout << "Сводные данные сохранены в: " << base_filename + "_summary.txt\n";
+    }
+}
+
+
 std::vector<TrajectoryPoint> TrajectoryCalculator::calculateTrajectory(IntegrationMethod method, 
                                                                       AlphaLaw alpha_law, 
                                                                       double dt) const {
