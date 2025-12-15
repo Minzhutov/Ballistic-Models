@@ -5,7 +5,20 @@
 #include <filesystem>
 #include <iomanip>
 
+#ifdef _WIN32
+#include <windows.h>
+#include <io.h>
+#include <fcntl.h>
+#endif
+
 int main() {
+    #ifdef _WIN32
+        // 65001 – кодовая страница UTF‑8
+        SetConsoleOutputCP(65001);
+        SetConsoleCP(65001);
+        // Для корректного вывода wide‑строк (если захотите)
+        _setmode(_fileno(stdout), _O_U16TEXT);
+    #endif
     // Создаем папку для результатов
     std::filesystem::create_directory("results");
     

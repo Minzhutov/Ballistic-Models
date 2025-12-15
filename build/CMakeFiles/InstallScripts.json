@@ -1,7 +1,7 @@
 {
 	"InstallScripts" : 
 	[
-		"/Users/matthew/Documents/GitHubProjects/Ballistic-Models/build/cmake_install.cmake"
+		"C:/Dev/Ballistic-Models-1/build/cmake_install.cmake"
 	],
 	"Parallel" : false
 }
