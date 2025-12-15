@@ -55,7 +55,7 @@ TrajectoryCalculator::TrajectoryCalculator(double V0, double theta_c0, double m_
       t_end(t_end), m0(m0), I_d(I_d), S_a(S_a), S_m(S_m) {
 }
 
-// Добавление точки траектории
+// Добавление точки траектории (ИСПРАВЛЕННАЯ ВЕРСИЯ)
 void TrajectoryCalculator::addTrajectoryPoint(std::vector<TrajectoryPoint>& trajectory, double t, 
                                              const std::vector<double>& state, 
                                              const std::vector<double>& derivatives,
@@ -70,21 +70,20 @@ void TrajectoryCalculator::addTrajectoryPoint(std::vector<TrajectoryPoint>& traj
     point.theta = state[5];
     point.m = state[6];
     
-    point.P = m_dot * W;
-
+    // Сохраняем производные
     if (derivatives.size() >= 7) {
         point.V_dot = derivatives[0];   // dV/dt
         // point.theta_c_dot = derivatives[1]; // если нужно
         point.x_dotc = derivatives[2];  // dx/dt
         point.y_dotc = derivatives[3];  // dy/dt
-        // point.omega_z_dot = derivatives[4]; // если нужно
-        // point.theta_dot = derivatives[5];   // если нужно
-        // point.m_dot = derivatives[6];       // если нужно
     } else {
         point.V_dot = 0.0;
         point.x_dotc = 0.0;
         point.y_dotc = 0.0;
     }
+    
+    // Тяга (упрощённая формула)
+    point.P = m_dot * W;
     
     // Защита от отрицательной высоты
     if (point.y < 0) point.y = 0;
@@ -113,12 +112,6 @@ void TrajectoryCalculator::addTrajectoryPoint(std::vector<TrajectoryPoint>& traj
         point.alpha = 0.0;
     }
     
-    std::vector<double> derivatives;
-    calculateDerivatives(t, state, derivatives, alpha_law);
-
-    point.x_dotc = derivatives[2];
-    point.y_dotc = derivatives[3];
-
     trajectory.push_back(point);
 }
 
@@ -213,7 +206,10 @@ std::vector<TrajectoryPoint> TrajectoryCalculator::integrateEuler(double dt, Alp
     std::vector<double> state = {V0, theta_c0, 0.0, y0, omega_z0, theta0, m0};
     double t = 0.0;
     
-    addTrajectoryPoint(trajectory, t, state, alpha_law);
+    // Начальная точка
+    std::vector<double> initial_derivatives;
+    calculateDerivatives(t, state, initial_derivatives, alpha_law);
+    addTrajectoryPoint(trajectory, t, state, initial_derivatives, alpha_law);
     
     while (t < t_end && state[6] > 0.1 * m0) {
         std::vector<double> derivatives;
@@ -232,13 +228,17 @@ std::vector<TrajectoryPoint> TrajectoryCalculator::integrateEuler(double dt, Alp
         
         // Сохраняем точку каждые 0.1 секунды
         if (fmod(t, 0.1) < dt/2.0 || dt <= 0.1) {
-            addTrajectoryPoint(trajectory, t, state, alpha_law);
+            std::vector<double> new_derivatives;
+            calculateDerivatives(t, state, new_derivatives, alpha_law);
+            addTrajectoryPoint(trajectory, t, state, new_derivatives, alpha_law);
         }
     }
     
     // Добавляем конечную точку
     if (trajectory.empty() || trajectory.back().t < t_end) {
-        addTrajectoryPoint(trajectory, t, state, alpha_law);
+        std::vector<double> final_derivatives;
+        calculateDerivatives(t, state, final_derivatives, alpha_law);
+        addTrajectoryPoint(trajectory, t, state, final_derivatives, alpha_law);
     }
     
     return trajectory;
@@ -250,7 +250,10 @@ std::vector<TrajectoryPoint> TrajectoryCalculator::integrateModifiedEuler(double
     std::vector<double> state = {V0, theta_c0, 0.0, y0, omega_z0, theta0, m0};
     double t = 0.0;
     
-    addTrajectoryPoint(trajectory, t, state, alpha_law);
+    // Начальная точка
+    std::vector<double> initial_derivatives;
+    calculateDerivatives(t, state, initial_derivatives, alpha_law);
+    addTrajectoryPoint(trajectory, t, state, initial_derivatives, alpha_law);
     
     while (t < t_end && state[6] > 0.1 * m0) {
         std::vector<double> k1, k2;
@@ -282,12 +285,16 @@ std::vector<TrajectoryPoint> TrajectoryCalculator::integrateModifiedEuler(double
         t += dt;
         
         if (fmod(t, 0.1) < dt/2.0 || dt <= 0.1) {
-            addTrajectoryPoint(trajectory, t, state, alpha_law);
+            std::vector<double> new_derivatives;
+            calculateDerivatives(t, state, new_derivatives, alpha_law);
+            addTrajectoryPoint(trajectory, t, state, new_derivatives, alpha_law);
         }
     }
     
     if (trajectory.empty() || trajectory.back().t < t_end) {
-        addTrajectoryPoint(trajectory, t, state, alpha_law);
+        std::vector<double> final_derivatives;
+        calculateDerivatives(t, state, final_derivatives, alpha_law);
+        addTrajectoryPoint(trajectory, t, state, final_derivatives, alpha_law);
     }
     
     return trajectory;
@@ -299,7 +306,10 @@ std::vector<TrajectoryPoint> TrajectoryCalculator::integrateRungeKutta4(double d
     std::vector<double> state = {V0, theta_c0, 0.0, y0, omega_z0, theta0, m0};
     double t = 0.0;
     
-    addTrajectoryPoint(trajectory, t, state, alpha_law);
+    // Начальная точка
+    std::vector<double> initial_derivatives;
+    calculateDerivatives(t, state, initial_derivatives, alpha_law);
+    addTrajectoryPoint(trajectory, t, state, initial_derivatives, alpha_law);
     
     while (t < t_end && state[6] > 0.1 * m0) {
         std::vector<double> k1, k2, k3, k4;
@@ -344,12 +354,16 @@ std::vector<TrajectoryPoint> TrajectoryCalculator::integrateRungeKutta4(double d
         t += dt;
         
         if (fmod(t, 0.1) < dt/2.0 || dt <= 0.1) {
-            addTrajectoryPoint(trajectory, t, state, alpha_law);
+            std::vector<double> new_derivatives;
+            calculateDerivatives(t, state, new_derivatives, alpha_law);
+            addTrajectoryPoint(trajectory, t, state, new_derivatives, alpha_law);
         }
     }
     
     if (trajectory.empty() || trajectory.back().t < t_end) {
-        addTrajectoryPoint(trajectory, t, state, alpha_law);
+        std::vector<double> final_derivatives;
+        calculateDerivatives(t, state, final_derivatives, alpha_law);
+        addTrajectoryPoint(trajectory, t, state, final_derivatives, alpha_law);
     }
     
     return trajectory;
@@ -376,6 +390,7 @@ std::vector<TrajectoryPoint> TrajectoryCalculator::calculateTrajectory(Integrati
     }
 }
 
+// Сохранение результатов в файл
 void TrajectoryCalculator::saveResultsToFile(const std::vector<TrajectoryPoint>& trajectory, 
                                             const std::string& filename) const {
     std::ofstream file(filename);
@@ -384,10 +399,10 @@ void TrajectoryCalculator::saveResultsToFile(const std::vector<TrajectoryPoint>&
         return;
     }
     
-    // Обновленный заголовок с V_dot
+    // Заголовок с V_dot, x_dotc, y_dotc
     file << "N\tt(c)\tm(kg)\tP(H)\tV(m/s)\tM\tCxa\talpha(grad)\ttheta_c(grad)\t"
          << "Cya_alpha\tomega_z(1/s)\ttheta(grad)\ty(m)\tx(m)\tg(m/s2)\t"
-         << "x_dotc(m/s)\ty_dotc(m/s)\tV_dot(m/s2)\n";  // ← добавил V_dot
+         << "x_dotc(m/s)\ty_dotc(m/s)\tV_dot(m/s2)\n";
     
     // Данные
     for (size_t i = 0; i < trajectory.size(); ++i) {
@@ -407,15 +422,16 @@ void TrajectoryCalculator::saveResultsToFile(const std::vector<TrajectoryPoint>&
              << std::setprecision(2) << p.y << "\t"
              << std::setprecision(2) << p.x << "\t"
              << std::setprecision(4) << p.g << "\t"
-             << std::setprecision(3) << p.x_dotc << "\t"   // ← добавил
-             << std::setprecision(3) << p.y_dotc << "\t"   // ← добавил
-             << std::setprecision(3) << p.V_dot << "\n";   // ← добавил
+             << std::setprecision(3) << p.x_dotc << "\t"
+             << std::setprecision(3) << p.y_dotc << "\t"
+             << std::setprecision(3) << p.V_dot << "\n";
     }
     
     file.close();
     std::cout << "Результаты сохранены в файл: " << filename << std::endl;
 }
 
+// Печать таблицы результатов
 void TrajectoryCalculator::printResultsTable(const std::vector<TrajectoryPoint>& trajectory) const {
     if (trajectory.empty()) {
         std::cout << "Траектория пуста!\n";
@@ -445,7 +461,7 @@ void TrajectoryCalculator::printResultsTable(const std::vector<TrajectoryPoint>&
         std::cout << std::setw(4) << i+1
                   << std::setw(8) << std::fixed << std::setprecision(1) << p.t
                   << std::setw(8) << std::setprecision(1) << p.V
-                  << std::setw(8) << std::setprecision(2) << p.V_dot  // ← добавил V_dot
+                  << std::setw(8) << std::setprecision(2) << p.V_dot
                   << std::setw(8) << std::setprecision(3) << p.M
                   << std::setw(8) << std::setprecision(2) << p.alpha
                   << std::setw(10) << std::setprecision(2) << p.theta_c
