@@ -215,10 +215,5 @@ int main() {
     std::cout << "\nРАСЧЕТ ЗАВЕРШЕН!\n";
     std::cout << "Все результаты сохранены в папке 'results/'\n\n";
     
-    std::cout << "Для построения графиков выполните:\n";
-    std::cout << "1. Установите Python и matplotlib: pip install matplotlib numpy\n";
-    std::cout << "2. Запустите скрипт: python plot_results.py\n";
-    std::cout << "3. Откройте отчет: open results/report.html\n";
-    
     return 0;
 }
